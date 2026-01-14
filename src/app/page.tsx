@@ -8,13 +8,10 @@ export default function Page() {
   const [activeTool, setActiveTool] = useState<Tool>('select');
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden bg-gray-100">
-      <Toolbar
-        activeTool={activeTool}
-        onToolChange={setActiveTool}
-      />
-
-      <Canvas />
-    </div>
+    <main className="flex h-screen overflow-hidden bg-slate-50">
+      <div className="flex-1 relative">
+        <Canvas />
+      </div>
+    </main>
   );
 }
