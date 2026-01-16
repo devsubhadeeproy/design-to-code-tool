@@ -1,39 +1,41 @@
-import { create } from 'zustand';
-import { devtools, persist } from 'zustand/middleware';
-import { CanvasState, DesignObject } from '../types/design';
+import { create } from "zustand";
+import { devtools, persist } from "zustand/middleware";
+import { CanvasState, DesignObject, StyleProperties } from "../types/design";
 
 interface CanvasStore extends CanvasState {
   // === BASIC CRUD OPERATIONS ===
   addObject: (object: DesignObject) => void;
   addObjects: (objects: DesignObject[]) => void; // Batch add
   updateObject: (id: string, updates: Partial<DesignObject>) => void;
-  updateObjects: (updates: { id: string; changes: Partial<DesignObject> }[]) => void; // Batch update
+  updateObjects: (
+    updates: { id: string; changes: Partial<DesignObject> }[]
+  ) => void; // Batch update
   removeObject: (id: string) => void;
   removeObjects: (ids: string[]) => void; // Batch remove
   clearCanvas: () => void;
-  
+
   // === SELECTION MANAGEMENT ===
   setSelectedIds: (ids: string[]) => void;
   selectAll: () => void;
   deselectAll: () => void;
   toggleSelection: (id: string) => void;
   getSelectedObjects: () => DesignObject[];
-  
+
   // === OBJECT QUERIES ===
   getObjectById: (id: string) => DesignObject | undefined;
-  getObjectsByType: (type: DesignObject['type']) => DesignObject[];
-  
+  getObjectsByType: (type: DesignObject["type"]) => DesignObject[];
+
   // === CANVAS TRANSFORMATION ===
   setZoom: (zoom: number) => void;
   setPan: (pan: { x: number; y: number }) => void;
   resetView: () => void;
-  
+
   // === CLIPBOARD OPERATIONS (Sprint 3) ===
   clipboard: DesignObject[];
   copySelected: () => void;
   pasteFromClipboard: () => void;
   duplicateSelected: () => void;
-  
+
   // === HISTORY MANAGEMENT (Sprint 3) ===
   history: CanvasState[];
   historyIndex: number;
@@ -43,6 +45,18 @@ interface CanvasStore extends CanvasState {
   redo: () => void;
   canUndo: () => boolean;
   canRedo: () => boolean;
+
+  /**
+   * Update style properties of a single object
+   *
+   * IMPORTANT:
+   * - Deep merges `style`
+   * - Prevents overwriting existing style fields
+   *
+   * USE CASE:
+   * - Change fill, stroke, strokeWidth from Toolbar
+   */
+  updateObjectStyle: (id: string, style: Partial<StyleProperties>) => void;
 }
 
 // Helper function to generate unique IDs
@@ -53,12 +67,14 @@ export const generateId = (type: string): string => {
 
 // Helper to deep clone objects (for history)
 const cloneState = (state: CanvasState): CanvasState => {
-  return JSON.parse(JSON.stringify({
-    objects: state.objects,
-    selectedIds: state.selectedIds,
-    zoom: state.zoom,
-    pan: state.pan,
-  }));
+  return JSON.parse(
+    JSON.stringify({
+      objects: state.objects,
+      selectedIds: state.selectedIds,
+      zoom: state.zoom,
+      pan: state.pan,
+    })
+  );
 };
 
 export const useCanvasStore = create<CanvasStore>()(
@@ -94,7 +110,7 @@ export const useCanvasStore = create<CanvasStore>()(
         /**
          * Add multiple objects at once (batch operation)
          * More efficient than calling addObject multiple times
-         * 
+         *
          * USE CASE: Paste multiple objects, AI generation
          */
         addObjects: (objects) => {
@@ -106,7 +122,7 @@ export const useCanvasStore = create<CanvasStore>()(
         /**
          * Update a single object's properties
          * Uses Partial<DesignObject> to allow updating any subset of properties
-         * 
+         *
          * IMMUTABILITY: Creates new array, doesn't mutate existing
          */
         updateObject: (id, updates) => {
@@ -119,17 +135,15 @@ export const useCanvasStore = create<CanvasStore>()(
 
         /**
          * Update multiple objects at once (batch operation)
-         * 
+         *
          * USE CASE: Move multiple selected objects, change colors in bulk
-         * 
+         *
          * PERFORMANCE: Single state update instead of N updates
          */
         updateObjects: (updates) => {
           set((state: any) => {
-            const updateMap = new Map(
-              updates.map((u) => [u.id, u.changes])
-            );
-            
+            const updateMap = new Map(updates.map((u) => [u.id, u.changes]));
+
             return {
               objects: state.objects.map((obj: DesignObject) => {
                 const changes = updateMap.get(obj.id);
@@ -146,15 +160,17 @@ export const useCanvasStore = create<CanvasStore>()(
         removeObject: (id) => {
           set((state) => ({
             objects: state.objects.filter((obj) => obj.id !== id),
-            selectedIds: state.selectedIds.filter((selectedId) => selectedId !== id),
+            selectedIds: state.selectedIds.filter(
+              (selectedId) => selectedId !== id
+            ),
           }));
         },
 
         /**
          * Remove multiple objects at once (batch operation)
-         * 
+         *
          * USE CASE: Delete all selected objects
-         * 
+         *
          * PERFORMANCE: Single filter pass instead of N removes
          */
         removeObjects: (ids) => {
@@ -206,7 +222,7 @@ export const useCanvasStore = create<CanvasStore>()(
         /**
          * Toggle selection state of a single object
          * If selected, deselect. If not selected, add to selection.
-         * 
+         *
          * USE CASE: Ctrl/Cmd+Click to add/remove from selection
          */
         toggleSelection: (id) => {
@@ -220,7 +236,7 @@ export const useCanvasStore = create<CanvasStore>()(
         /**
          * Get full objects for selected IDs
          * Returns array of DesignObjects
-         * 
+         *
          * USE CASE: Properties Panel needs full object data
          */
         getSelectedObjects: () => {
@@ -235,7 +251,7 @@ export const useCanvasStore = create<CanvasStore>()(
         /**
          * Fast lookup of object by ID
          * Returns undefined if not found
-         * 
+         *
          * PERFORMANCE: O(n) - could optimize with Map if needed
          */
         getObjectById: (id) => {
@@ -244,7 +260,7 @@ export const useCanvasStore = create<CanvasStore>()(
 
         /**
          * Get all objects of a specific type
-         * 
+         *
          * USE CASE: "Select all text objects", Layer filtering
          */
         getObjectsByType: (type) => {
@@ -255,14 +271,14 @@ export const useCanvasStore = create<CanvasStore>()(
 
         /**
          * Set zoom level (1 = 100%)
-         * 
+         *
          * RANGE: Typically 0.1 (10%) to 10 (1000%)
          */
         setZoom: (zoom) => set({ zoom: Math.max(0.1, Math.min(10, zoom)) }),
 
         /**
          * Set pan offset
-         * 
+         *
          * USE CASE: Hand tool, mouse wheel pan
          */
         setPan: (pan) => set({ pan }),
@@ -289,7 +305,7 @@ export const useCanvasStore = create<CanvasStore>()(
         /**
          * Paste objects from clipboard
          * Creates new objects with offset position and new IDs
-         * 
+         *
          * OFFSET: Places 20px right and down from original
          */
         pasteFromClipboard: () => {
@@ -325,7 +341,7 @@ export const useCanvasStore = create<CanvasStore>()(
         /**
          * Push current state to history
          * Called after operations that should be undoable
-         * 
+         *
          * OPTIMIZATION: Only stores canvas state, not entire store
          */
         pushHistory: () => {
@@ -394,9 +410,38 @@ export const useCanvasStore = create<CanvasStore>()(
           const state = get();
           return state.historyIndex < state.history.length - 1;
         },
+
+        /**
+         * Update style properties of a single object
+         *
+         * IMPORTANT:
+         * - Deep merges `style`
+         * - Prevents overwriting existing style fields
+         *
+         * USE CASE:
+         * - Change fill, stroke, strokeWidth from Toolbar
+         */
+        updateObjectStyle: (id, styleUpdates) => {
+          set((state) => ({
+            objects: state.objects.map((obj) => {
+              if (obj.id !== id) return obj;
+
+              // some object types (future) may not have style
+              if (!("style" in obj)) return obj;
+
+              return {
+                ...obj,
+                style: {
+                  ...obj.style,
+                  ...styleUpdates,
+                },
+              } as DesignObject;
+            }),
+          }));
+        },
       }),
       {
-        name: 'canvas-storage', // localStorage key
+        name: "canvas-storage", // localStorage key
         partialize: (state) => ({
           // Only persist these fields (not history, clipboard)
           objects: state.objects,
@@ -406,51 +451,51 @@ export const useCanvasStore = create<CanvasStore>()(
       }
     ),
     {
-      name: 'CanvasStore', // DevTools label
+      name: "CanvasStore", // DevTools label
     }
   )
 );
 
 /**
  * USAGE EXAMPLES:
- * 
+ *
  * === Basic Operations ===
  * const addObject = useCanvasStore((state) => state.addObject);
  * const objects = useCanvasStore((state) => state.objects);
- * 
+ *
  * addObject({
  *   id: generateId('rectangle'),
  *   type: 'rectangle',
  *   ...
  * });
- * 
+ *
  * === Selection ===
  * const selectAll = useCanvasStore((state) => state.selectAll);
  * const selectedObjects = useCanvasStore((state) => state.getSelectedObjects());
- * 
+ *
  * selectAll(); // Selects all objects
  * console.log(selectedObjects); // Array of selected DesignObjects
- * 
+ *
  * === Batch Operations ===
  * const updateObjects = useCanvasStore((state) => state.updateObjects);
- * 
+ *
  * updateObjects([
  *   { id: 'rect_1', changes: { position: { x: 100, y: 100 } } },
  *   { id: 'rect_2', changes: { position: { x: 200, y: 200 } } },
  * ]);
- * 
+ *
  * === Clipboard ===
  * const copySelected = useCanvasStore((state) => state.copySelected);
  * const pasteFromClipboard = useCanvasStore((state) => state.pasteFromClipboard);
- * 
+ *
  * copySelected(); // Copies selected objects
  * pasteFromClipboard(); // Pastes with offset
- * 
+ *
  * === History ===
  * const undo = useCanvasStore((state) => state.undo);
  * const redo = useCanvasStore((state) => state.redo);
  * const canUndo = useCanvasStore((state) => state.canUndo());
- * 
+ *
  * if (canUndo) {
  *   undo();
  * }
@@ -458,23 +503,23 @@ export const useCanvasStore = create<CanvasStore>()(
 
 /**
  * PERFORMANCE CONSIDERATIONS:
- * 
+ *
  * 1. BATCH OPERATIONS
  *    - Use addObjects() instead of multiple addObject() calls
  *    - Single state update = single re-render
- * 
+ *
  * 2. SELECTIVE SUBSCRIPTIONS
  *    - Only subscribe to needed state slices
  *    - useCanvasStore((state) => state.objects) // Re-renders on objects change only
- * 
+ *
  * 3. HISTORY SIZE
  *    - Limited to 50 states by default
  *    - Prevents memory bloat with large canvases
- * 
+ *
  * 4. PERSISTENCE
  *    - Only persists essential data (not history/clipboard)
  *    - Reduces localStorage size
- * 
+ *
  * 5. IMMUTABILITY
  *    - All updates create new arrays/objects
  *    - Enables React's reconciliation optimization
@@ -482,13 +527,13 @@ export const useCanvasStore = create<CanvasStore>()(
 
 /**
  * DEVTOOLS USAGE:
- * 
+ *
  * 1. Install Redux DevTools Extension
  * 2. Open browser DevTools → Redux tab
  * 3. See all Zustand actions and state changes
  * 4. Time-travel through history
  * 5. Export/import state for debugging
- * 
+ *
  * Actions visible in DevTools:
  * - addObject
  * - updateObject

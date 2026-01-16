@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo } from 'react';
 import { useCanvasStore } from '@/lib/store/canvasStore';
+import type { DesignObject } from '@/lib/types/design';
 
 export type Tool =
     | 'select'
@@ -17,12 +18,29 @@ interface ToolbarProps {
 }
 
 export default function Toolbar({ activeTool, onToolChange }: ToolbarProps) {
-    const [fillColor, setFillColor] = useState('#3b82f6');
-    const [strokeColor, setStrokeColor] = useState('#1e40af');
-    const [strokeWidth, setStrokeWidth] = useState(2);
+    /* -------------------- STORE STATE (RAW ONLY) -------------------- */
+    const objects = useCanvasStore((s) => s.objects);
+    const selectedIds = useCanvasStore((s) => s.selectedIds);
+    const updateObjectStyle = useCanvasStore((s) => s.updateObjectStyle);
+    const clearCanvas = useCanvasStore((s) => s.clearCanvas);
 
-    const clearCanvas = useCanvasStore((state) => state.clearCanvas);
-    const objects = useCanvasStore((state) => state.objects);
+    /* -------------------- DERIVED STATE -------------------- */
+    const selectedObject: DesignObject | null = useMemo(() => {
+        if (selectedIds.length !== 1) return null;
+        return objects.find((o) => o.id === selectedIds[0]) ?? null;
+    }, [objects, selectedIds]);
+
+    /* -------------------- STYLE VALUES -------------------- */
+    const fillColor =
+        selectedObject &&
+            (selectedObject.type === 'rectangle' ||
+                selectedObject.type === 'frame' ||
+                selectedObject.type === 'text')
+            ? selectedObject.style.fill ?? '#000000'
+            : '#000000';
+
+    const strokeColor = selectedObject?.style.stroke ?? '#000000';
+    const strokeWidth = selectedObject?.style.strokeWidth ?? 1;
 
     const tools: { id: Tool; label: string; icon: string }[] = [
         { id: 'select', label: 'Select', icon: '⬆' },
@@ -74,8 +92,21 @@ export default function Toolbar({ activeTool, onToolChange }: ToolbarProps) {
                     <input
                         type="color"
                         value={fillColor}
-                        onChange={(e) => setFillColor(e.target.value)}
-                        className="w-10 h-10 rounded cursor-pointer border-2 border-gray-300"
+                        disabled={!selectedObject || selectedObject.type === 'arrow'}
+                        onChange={(e) => {
+                            if (!selectedObject) return;
+
+                            if (
+                                selectedObject.type === 'rectangle' ||
+                                selectedObject.type === 'frame' ||
+                                selectedObject.type === 'text'
+                            ) {
+                                updateObjectStyle(selectedObject.id, {
+                                    fill: e.target.value,
+                                });
+                            }
+                        }}
+                        className="w-10 h-10 rounded cursor-pointer border-2 border-gray-300 disabled:opacity-50"
                     />
                 </div>
 
@@ -85,8 +116,14 @@ export default function Toolbar({ activeTool, onToolChange }: ToolbarProps) {
                     <input
                         type="color"
                         value={strokeColor}
-                        onChange={(e) => setStrokeColor(e.target.value)}
-                        className="w-10 h-10 rounded cursor-pointer border-2 border-gray-300"
+                        disabled={!selectedObject}
+                        onChange={(e) => {
+                            if (!selectedObject) return;
+                            updateObjectStyle(selectedObject.id, {
+                                stroke: e.target.value,
+                            });
+                        }}
+                        className="w-10 h-10 rounded cursor-pointer border-2 border-gray-300 disabled:opacity-50"
                     />
                 </div>
 
@@ -95,11 +132,17 @@ export default function Toolbar({ activeTool, onToolChange }: ToolbarProps) {
                     <label className="text-xs text-gray-600 mb-1">Width</label>
                     <input
                         type="number"
-                        min="0"
-                        max="20"
+                        min={0}
+                        max={20}
                         value={strokeWidth}
-                        onChange={(e) => setStrokeWidth(Number(e.target.value))}
-                        className="w-16 h-10 px-2 border-2 border-gray-300 rounded text-center"
+                        disabled={!selectedObject}
+                        onChange={(e) => {
+                            if (!selectedObject) return;
+                            updateObjectStyle(selectedObject.id, {
+                                strokeWidth: Number(e.target.value),
+                            });
+                        }}
+                        className="w-16 h-10 px-2 border-2 border-gray-300 rounded text-center disabled:opacity-50"
                     />
                 </div>
             </div>

@@ -49,11 +49,16 @@ export interface TextObject extends BaseDesignObject{
     };
 }
 
+// Arrow-specified style
+export interface ArrowStyle extends Pick<StyleProperties, 'stroke' | 'strokeWidth'>{
+    arrowHeadSize?: number
+}
+
 // Arrow object
 export interface ArrowObject extends BaseDesignObject{
     type: 'arrow';
     points: { x: number; y: number; }[];
-    style: Pick<StyleProperties, 'stroke' | 'strokeWidth'>;
+    style: ArrowStyle;
 }
 
 export type DesignObject = RectangleObject | TextObject | ArrowObject;
