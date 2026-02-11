@@ -36,7 +36,7 @@ export function CanvasViewport({ children }: CanvasViewportProps) {
     }
 
     const handleMouseUp = (e: React.MouseEvent) => {
-        selection.endSelection();
+        selection.endSelection(e.shiftKey);
     }
 
     return (
