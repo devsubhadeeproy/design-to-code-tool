@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useCanvasStore } from "../state/CanvasStore";
 
-export function usePan(containerRef: React.RefObject<HTMLDivElement>) {
+export function usePan(containerRef: React.RefObject<HTMLDivElement | null>) {
   const panX = useCanvasStore((s) => s.panX);
   const panY = useCanvasStore((s) => s.panY);
   const setPan = useCanvasStore((s) => s.setPan);
