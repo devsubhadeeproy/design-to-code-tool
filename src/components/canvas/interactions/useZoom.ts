@@ -10,6 +10,9 @@ export function useZoom(containerRef: React.RefObject<HTMLDivElement | null>){
     const setZoom = useCanvasStore((s)=>s.setZoom);
     const setPan = useCanvasStore((s)=>s.setPan);
 
+    const MAX_ZOOM = 5;
+    const MIN_ZOOM = 0.1;
+
     useEffect(()=>{
         const el = containerRef.current;
         if (!el) return;
@@ -20,7 +23,11 @@ export function useZoom(containerRef: React.RefObject<HTMLDivElement | null>){
             e.preventDefault();
 
             const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-            const newZoom = zoom * zoomFactor;
+            const proposedZoom = zoom * zoomFactor;
+
+            const clampedZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, proposedZoom));
+
+            if (clampedZoom === zoom) return;
 
             const rect = el!.getBoundingClientRect();
             const mouseX = e.clientX - rect.left;
@@ -29,11 +36,12 @@ export function useZoom(containerRef: React.RefObject<HTMLDivElement | null>){
             const worldX = (mouseX - panX) / zoom;
             const worldY = (mouseY - panY) / zoom;
 
-            setZoom(newZoom);
+            setZoom(proposedZoom);
 
-            const newPanX = mouseX - worldX * newZoom;
-            const newPanY = mouseY - worldY * newZoom;
+            const newPanX = mouseX - worldX * clampedZoom;
+            const newPanY = mouseY - worldY * clampedZoom;
 
+            setZoom(clampedZoom);
             setPan(newPanX, newPanY);
         }
 
