@@ -23,7 +23,7 @@ export function useSelection() {
   const PAN_SPEED = 5;
 
   const autoPanLoop = () => {
-    if (!isSelectingRef) return;
+    if (!isSelectingRef.current) return;
 
     const { x, y } = mouseRef.current;
 
@@ -40,10 +40,8 @@ export function useSelection() {
     else if (y > viewportHeight - EDGE_THRESHOLD) dy = -PAN_SPEED;
 
     if (dx !== 0 || dy !== 0) {
-      useCanvasStore.setState((state) => ({
-        panX: state.panX + dx,
-        panY: state.panY + dy,
-      }));
+      const { panX, panY, setPan } = useCanvasStore.getState();
+      setPan(panX + dx, panY + dy);
     }
 
     animationRef.current = requestAnimationFrame(autoPanLoop);

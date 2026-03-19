@@ -3,49 +3,72 @@
 import { useEffect } from "react";
 import { useCanvasStore } from "../state/CanvasStore";
 
-export function useZoom(containerRef: React.RefObject<HTMLDivElement | null>){
-    const zoom = useCanvasStore((s)=>s.zoom);
-    const panX = useCanvasStore((s)=>s.panX);
-    const panY = useCanvasStore((s)=>s.panY);
-    const setZoom = useCanvasStore((s)=>s.setZoom);
-    const setPan = useCanvasStore((s)=>s.setPan);
+export function useZoom(containerRef: React.RefObject<HTMLDivElement | null>) {
+  const zoom = useCanvasStore((s) => s.zoom);
+  const panX = useCanvasStore((s) => s.panX);
+  const panY = useCanvasStore((s) => s.panY);
+  const setZoom = useCanvasStore((s) => s.setZoom);
+  const setPan = useCanvasStore((s) => s.setPan);
 
-    const MAX_ZOOM = 5;
-    const MIN_ZOOM = 0.1;
+  const MAX_ZOOM = 5;
+  const MIN_ZOOM = 0.1;
 
-    useEffect(()=>{
-        const el = containerRef.current;
-        if (!el) return;
+  const WORLD_WIDTH = 5000;
+  const WORLD_HEIGHT = 5000;
 
-        function onWheel(e: WheelEvent){
-            if (!e.ctrlKey) return;
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
 
-            e.preventDefault();
+    function onWheel(e: WheelEvent) {
+      if (!e.ctrlKey) return;
 
-            const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
-            const proposedZoom = zoom * zoomFactor;
+      e.preventDefault();
 
-            const clampedZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, proposedZoom));
+      const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+      const proposedZoom = zoom * zoomFactor;
 
-            if (clampedZoom === zoom) return;
+      const clampedZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, proposedZoom));
 
-            const rect = el!.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
+      if (clampedZoom === zoom) return;
 
-            const worldX = (mouseX - panX) / zoom;
-            const worldY = (mouseY - panY) / zoom;
+      const rect = el!.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
 
-            setZoom(proposedZoom);
+      const worldX = (mouseX - panX) / zoom;
+      const worldY = (mouseY - panY) / zoom;
 
-            const newPanX = mouseX - worldX * clampedZoom;
-            const newPanY = mouseY - worldY * clampedZoom;
+      setZoom(proposedZoom);
 
-            setZoom(clampedZoom);
-            setPan(newPanX, newPanY);
-        }
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
 
-        el.addEventListener("wheel", onWheel, { passive: false });
-        return () => el.removeEventListener("wheel", onWheel);
-    }, [zoom, panX, panY, setZoom, setPan, containerRef]);
+      const worldWidthScaled = WORLD_WIDTH * clampedZoom;
+      const worldHeightScaled = WORLD_HEIGHT * clampedZoom;
+
+      let newPanX;
+      let newPanY;
+
+      if (worldWidthScaled <= viewportWidth) {
+        // center horizontally
+        newPanX = (viewportWidth - worldWidthScaled) / 2;
+      } else {
+        newPanX = mouseX - worldX * clampedZoom;
+      }
+
+      if (worldHeightScaled <= viewportHeight) {
+        // center vertically
+        newPanY = (viewportHeight - worldHeightScaled) / 2;
+      } else {
+        newPanY = mouseY - worldY * clampedZoom;
+      }
+
+      setZoom(clampedZoom);
+      setPan(newPanX, newPanY);
+    }
+
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [zoom, panX, panY, setZoom, setPan, containerRef]);
 }

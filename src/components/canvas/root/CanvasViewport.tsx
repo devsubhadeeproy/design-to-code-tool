@@ -48,9 +48,10 @@ export function CanvasViewport({ children }: CanvasViewportProps) {
             onMouseUp={handleMouseUp}
         >
             <div
-                className="absolute inset-0 origin-top-left"
+                className="absolute inset-0"
                 style={{
                     transform: `translate(${panX}px, ${panY}px) scale(${zoom})`,
+                    transformOrigin: "top left",
                 }}
             >
                 {children}
